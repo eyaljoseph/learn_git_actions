@@ -25,10 +25,8 @@ jobs:
 
       - name: Debug  # Added debug step
         run: |
-          lsof -i :8080
           cat /var/log/syslog | grep python
           ps aux | grep python
-          netstat -tulpn | grep 8080
 
       - name: Test Flask Server
         run: curl http://127.0.0.1:8080  # Access Flask on port 8080
