@@ -20,7 +20,7 @@ jobs:
 
       - name: Run Flask Server
         run: |
-          python app.py &  # Start Flask in the background
+          python main.py &  # Start Flask in the background
           sleep 5  # Give Flask some time to start
 
       - name: Debug  # Added debug step
