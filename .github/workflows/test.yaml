@@ -20,13 +20,8 @@ jobs:
 
       - name: Run Flask Server
         run: |
-          python main.py &  # Start Flask in the background
+          python app.py &  # Start Flask in the background
           sleep 5  # Give Flask some time to start
-
-      - name: Debug  # Added debug step
-        run: |
-          cat /var/log/syslog | grep python
-          ps aux | grep python
 
       - name: Test Flask Server
         run: curl http://127.0.0.1:8080  # Access Flask on port 8080
