@@ -22,7 +22,7 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarcloud-github-action@v2  # Using SonarQube GitHub Action
         env:
-          SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}  # Your SonarQube token should be added as a secret
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}  # Your SonarQube token should be added as a secret
         with:
           sonar-project-key: ${{ secrets.SONARQUBE_PROJECT_KEY }}  # Replace with your SonarQube project key
           sonar-project-name: ${{ secrets.SONARQUBE_PROJECT_NAME }}  # Replace with your SonarQube project name
