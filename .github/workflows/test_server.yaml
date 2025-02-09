@@ -18,6 +18,24 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt  # Install Flask
 
+      # SonarQube Scan Step
+      - name: SonarQube Scan
+        uses: SonarSource/sonarcloud-github-action@v2  # Using SonarQube GitHub Action
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}  # Your SonarQube token should be added as a secret
+        with:
+          sonar-project-key: ${{ secrets.SONARQUBE_PROJECT_KEY }}  # Replace with your SonarQube project key
+          sonar-project-name: ${{ secrets.SONARQUBE_PROJECT_NAME }}  # Replace with your SonarQube project name
+
+      # # Veracode Scan Step
+      # - name: Veracode Static Analysis Scan
+      #   uses: veracode/scan-action@v2  # Veracode GitHub Action
+      #   with:
+      #     api-id: ${{ secrets.VERACODE_API_ID }}  # Veracode API ID (secret)
+      #     api-key: ${{ secrets.VERACODE_API_KEY }}  # Veracode API Key (secret)
+      #     file: "requirements.txt"  # Specify the file or folder to scan, adjust as needed
+      #     scan-type: "static"  # Scan type (static, dynamic, etc.)
+
       - name: Run Flask Server
         run: |
           python main.py &  # Start Flask in the background
@@ -30,4 +48,3 @@ jobs:
 
       - name: Test Flask Server
         run: curl http://127.0.0.1:8080  # Access Flask on port 8080
-        
