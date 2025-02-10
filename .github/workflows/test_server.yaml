@@ -31,8 +31,6 @@ jobs:
             -Dsonar.organization=${{ secrets.SONARQUBE_ORGANIZATION }}
             -Dsonar.branch.name=main
 
-
-
       # # Veracode Scan Step
       # - name: Veracode Static Analysis Scan
       #   uses: veracode/scan-action@v2  # Veracode GitHub Action

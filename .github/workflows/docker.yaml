@@ -1,14 +1,15 @@
 name: CI Docker Build & Push
 
 on:
-  push:
-    branches: [ "main" ] # Trigger the workflow when changes are pushed to the main branch
-  pull_request:
-    branches: [ "main" ] # Trigger on PR targeting main branch
+  workflow_run:
+    workflows: ["Run Flask Server on GitHub Runner"]  # The name of your test workflow file
+    types:
+      - completed  # Triggers when the test workflow finishes
 
 jobs:
   docker-build-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Runs only if the test workflow succeeded
 
     steps:
       - name: Checkout repository
