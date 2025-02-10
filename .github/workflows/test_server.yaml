@@ -22,7 +22,7 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
-          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}  # Your SonarCloud token
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}  # Your SonarCloud token
           SONAR_HOST_URL: https://sonarcloud.io  # If using SonarCloud
         with:
           args: >
