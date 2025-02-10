@@ -28,6 +28,8 @@ jobs:
           args: >
             -Dsonar.projectKey=${{ secrets.SONARQUBE_PROJECT_KEY }}
             -Dsonar.projectName=${{ secrets.SONARQUBE_PROJECT_NAME }}
+            -Dsonar.organization=${{ secrets.SONARQUBE_ORGANIZATION }}
+
 
 
       # # Veracode Scan Step
