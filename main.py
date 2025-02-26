@@ -1,10 +1,13 @@
+import os
 from flask import Flask
 
 app = Flask(__name__)
 
+POD_NUMBER = os.getenv("POD_NUMBER", "UNKNOWN")
+
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    return f"Hello, World! from pod {POD_NUMBER}"
 
 @app.route('/check')
 def check():

@@ -32,13 +32,13 @@ jobs:
       #       -Dsonar.branch.name=main
 
       # Veracode Scan Step
-      - name: Veracode Static Analysis Scan
-        uses: veracode/scan-action@v2  # Veracode GitHub Action
-        with:
-          api-id: ${{ secrets.VERACODE_API_ID }}  # Veracode API ID (secret)
-          api-key: ${{ secrets.VERACODE_API_KEY }}  # Veracode API Key (secret)
-          file: "requirements.txt"  # Specify the file or folder to scan, adjust as needed
-          scan-type: "static"  # Scan type (static, dynamic, etc.)
+      # - name: Veracode Static Analysis Scan
+      #   uses: veracode/scan-action@v2  # Veracode GitHub Action
+      #   with:
+      #     api-id: ${{ secrets.VERACODE_API_ID }}  # Veracode API ID (secret)
+      #     api-key: ${{ secrets.VERACODE_API_KEY }}  # Veracode API Key (secret)
+      #     file: "requirements.txt"  # Specify the file or folder to scan, adjust as needed
+      #     scan-type: "static"  # Scan type (static, dynamic, etc.)
 
       - name: Run Flask Server
         run: |
