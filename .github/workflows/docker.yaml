@@ -36,20 +36,20 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-  deploy-to-k3s:
-    runs-on: ubuntu-latest
-    needs: build-and-push  # Runs after Docker build is done
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+  # deploy-to-k3s:
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-push  # Runs after Docker build is done
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v2
 
-      - name: Set up Kubernetes
-        run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
-          export KUBECONFIG=kubeconfig
+  #     - name: Set up Kubernetes
+  #       run: |
+  #         echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+  #         export KUBECONFIG=kubeconfig
 
-      - name: Deploy to k3s
-        run: |
-          kubectl apply -f deployment.yaml
-          kubectl rollout status deployment/my-app
+  #     - name: Deploy to k3s
+  #       run: |
+  #         kubectl apply -f deployment.yaml
+  #         kubectl rollout status deployment/my-app
 
