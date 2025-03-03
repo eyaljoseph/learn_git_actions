@@ -7,6 +7,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+POD_NUMBER = os.getenv("POD_NUMBER", "UNKNOWN")
+
 @app.route('/')
 def hello_world():
     logger.info('Received request to /')
