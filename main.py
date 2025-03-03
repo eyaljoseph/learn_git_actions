@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +13,7 @@ POD_NUMBER = os.getenv("POD_NUMBER", "UNKNOWN")
 @app.route('/')
 def hello_world():
     logger.info('Received request to /')
-    return 'Hello, World!'
+    return f'Hello, World! from pod {POD_NUMBER}'
 
 @app.route('/health')
 def health_check():
