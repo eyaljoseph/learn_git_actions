@@ -1,0 +1,35 @@
+name: Deploy Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v1
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Authenticate with AWS (if applicable)
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Deploy Helm chart
+        run: |
+          helm upgrade --install dockerhub-app ./helm-chart-directory

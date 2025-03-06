@@ -10,8 +10,18 @@ app = Flask(__name__)
 
 POD_NUMBER = os.getenv("POD_NUMBER", "UNKNOWN")
 
-@app.route('/')
-def hello_world():
+@app.route('/pod1')
+def pod1():
+    logger.info('Received request to /')
+    return f'Hello, World! from pod {POD_NUMBER}'
+
+@app.route('/pod2')
+def pod2():
+    logger.info('Received request to /')
+    return f'Hello, World! from pod {POD_NUMBER}'
+
+@app.route('/pod3')
+def pod3():
     logger.info('Received request to /')
     return f'Hello, World! from pod {POD_NUMBER}'
 
