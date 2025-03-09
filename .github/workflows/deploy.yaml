@@ -34,12 +34,19 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 13.48.162.74 >> ~/.ssh/known_hosts
 
+      # - name: Get kubeconfig from VM
+      #   run: |
+      #     ssh -i ~/.ssh/id_rsa ubuntu@13.48.162.74 "sudo cat /etc/rancher/k3s/k3s.yaml" > kubeconfig
+      #     sed -i 's/127.0.0.1/13.48.162.74/g' kubeconfig
+      #     export KUBECONFIG=./kubeconfig
+      #     echo "KUBECONFIG=./kubeconfig" >> $GITHUB_ENV
+
       - name: Get kubeconfig from VM
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@13.48.162.74 "sudo cat /etc/rancher/k3s/k3s.yaml" > kubeconfig
           sed -i 's/127.0.0.1/13.48.162.74/g' kubeconfig
-          export KUBECONFIG=./kubeconfig
-          echo "KUBECONFIG=./kubeconfig" >> $GITHUB_ENV
+          export KUBECONFIG=$(pwd)/kubeconfig
+          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
 
       - name: Get latest image SHA
         run: |
