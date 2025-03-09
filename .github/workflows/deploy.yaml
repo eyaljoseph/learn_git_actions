@@ -47,5 +47,3 @@ jobs:
             --set image.repository=${{ secrets.DOCKER_USERNAME }}/learn_git_actions \
             --set image.tag=latest \
             --namespace default \
-            --wait --timeout 5m \
-            --replace
