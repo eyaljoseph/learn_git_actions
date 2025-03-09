@@ -34,13 +34,6 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 13.48.162.74 >> ~/.ssh/known_hosts
 
-      # - name: Get kubeconfig from VM
-      #   run: |
-      #     ssh -i ~/.ssh/id_rsa ubuntu@13.48.162.74 "sudo cat /etc/rancher/k3s/k3s.yaml" > kubeconfig
-      #     sed -i 's/127.0.0.1/13.48.162.74/g' kubeconfig
-      #     export KUBECONFIG=./kubeconfig
-      #     echo "KUBECONFIG=./kubeconfig" >> $GITHUB_ENV
-
       - name: Get kubeconfig from VM
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@13.48.162.74 "sudo cat /etc/rancher/k3s/k3s.yaml" > kubeconfig
@@ -48,15 +41,10 @@ jobs:
           export KUBECONFIG=$(pwd)/kubeconfig
           echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
 
-      - name: Get latest image SHA
-        run: |
-          echo "IMAGE_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-
       - name: Deploy using Helm
         run: |
           helm upgrade --install flask-app ./helm-chart \
             --set image.repository=${{ secrets.DOCKER_USERNAME }}/learn_git_actions \
-            --set image.tag=${{ env.IMAGE_SHA }} \
+            --set image.tag=latest \
             --namespace default \
             --wait --timeout 5m
-            
