@@ -1,35 +1,55 @@
-name: Deploy Helm Chart
+name: Deploy to k3s with Helm
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Docker Build and Push"]
+    types:
+      - completed
+  workflow_dispatch:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest  # Changed from 'self-hosted' to 'ubuntu-latest'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up Helm
-        run: |
-          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up kubectl
-        uses: azure/setup-kubectl@v1
+        uses: azure/setup-kubectl@v3
         with:
-          kubeconfig: ${{ secrets.KUBECONFIG }}
+          version: 'latest'
 
-      - name: Authenticate with AWS (if applicable)
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set default.region ${{ secrets.AWS_DEFAULT_REGION }}
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
 
-      - name: Deploy Helm chart
+      - name: Setup SSH key for k3s access
         run: |
-          helm upgrade --install dockerhub-app ./helm-chart-directory
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 13.48.162.74 >> ~/.ssh/known_hosts
+
+      - name: Get kubeconfig from VM
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@13.48.162.74 "sudo cat /etc/rancher/k3s/k3s.yaml" > kubeconfig
+          sed -i 's/127.0.0.1/13.48.162.74/g' kubeconfig
+          export KUBECONFIG=./kubeconfig
+          echo "KUBECONFIG=./kubeconfig" >> $GITHUB_ENV
+
+      - name: Get latest image SHA
+        run: |
+          echo "IMAGE_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Deploy using Helm
+        run: |
+          helm upgrade --install flask-app ./helm-chart \
+            --set image.repository=${{ secrets.DOCKER_USERNAME }}/learn_git_actions \
+            --set image.tag=${{ env.IMAGE_SHA }} \
+            --namespace default \
+            --wait --timeout 5m
+            
