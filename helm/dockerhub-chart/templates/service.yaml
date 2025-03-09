@@ -1,0 +1,18 @@
+{{- range .Values.apps }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: load-balancer-{{ .podNumber }}
+  labels:
+    {{- include "dockerhub-app.labels" $ | nindent 4 }}
+    app: {{ .name }}
+spec:
+  type: {{ $.Values.service.type }}
+  selector:
+    app: {{ .name }}
+  ports:
+    - port: {{ $.Values.service.port }}
+      targetPort: {{ $.Values.service.targetPort }}
+      protocol: TCP
+---
+{{- end }}

@@ -1,0 +1,42 @@
+image:
+  repository: eyaljosepe/learn_git_actions
+  tag: latest
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: dockerhub-secret
+
+resources:
+  requests:
+    memory: "16Mi"
+    cpu: "50m"
+
+apps:
+  - name: dockerhub-app-1
+    podNumber: "1"
+    path: /pod1
+    replicas: 1
+  - name: dockerhub-app-2
+    podNumber: "2"
+    path: /pod2
+    replicas: 1
+  - name: dockerhub-app-3
+    podNumber: "3"
+    path: /pod3
+    replicas: 1
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  host: dockerhub.local
+  healthPath: /health
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80

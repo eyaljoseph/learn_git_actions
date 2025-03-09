@@ -1,0 +1,34 @@
+{{- range .Values.apps }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .name }}
+    {{- include "dockerhub-app.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ .replicas }}
+  selector:
+    matchLabels:
+      app: {{ .name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .name }}
+        app-group: dockerhub-app
+    spec:
+      imagePullSecrets:
+        {{- toYaml $.Values.imagePullSecrets | nindent 8 }}
+      containers:
+        - name: app-container
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ $.Values.service.targetPort }}
+          env:
+            - name: POD_NUMBER
+              value: {{ .podNumber | quote }}
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+---
+{{- end }}

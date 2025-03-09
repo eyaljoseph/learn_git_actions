@@ -1,0 +1,29 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dockerhub-ingress
+  labels:
+    {{- include "dockerhub-app.labels" . | nindent 4 }}
+spec:
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      {{- range .Values.apps }}
+      - path: {{ .path }}
+        pathType: Prefix
+        backend:
+          service:
+            name: load-balancer-{{ .podNumber }}
+            port:
+              number: {{ $.Values.service.port }}
+      {{- end }}
+      - path: {{ .Values.ingress.healthPath }}
+        pathType: Prefix
+        backend:
+          service:
+            name: load-balancer-1
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}
