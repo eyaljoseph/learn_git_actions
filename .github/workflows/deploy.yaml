@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Changed from 'self-hosted' to 'ubuntu-latest'
+    runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
@@ -41,9 +41,24 @@ jobs:
           export KUBECONFIG=$(pwd)/kubeconfig
           echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
 
+      - name: Delete existing deployments, pods, and services
+        run: |
+          kubectl delete deployment --all --namespace default || true
+          kubectl delete pod --all --namespace default || true
+          kubectl delete svc --all --namespace default || true
+          kubectl delete ingress --all --namespace default || true
+
+      - name: Wait for resources to be fully deleted
+        run: |
+          while kubectl get pods --namespace default | grep -v "NAME"; do
+            echo "Waiting for pods to terminate..."
+            sleep 5
+          done
+          echo "All resources deleted successfully."
+
       - name: Deploy using Helm
         run: |
           helm upgrade --install flask-app ./helm-chart \
             --set image.repository=${{ secrets.DOCKER_USERNAME }}/learn_git_actions \
             --set image.tag=latest \
-            --namespace default \
+            --namespace default
