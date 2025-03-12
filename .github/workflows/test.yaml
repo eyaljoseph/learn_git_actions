@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4  # Fetch repo files
+        with:
+          fetch-depth: 0  # Fetches all history for all branches and tags
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -16,7 +18,26 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt  # Install Flask
+        run: |
+          pip install -r requirements.txt
+          pip install coverage pytest pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=. --cov-report=xml
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=.
+            -Dsonar.python.version=3.10
 
       # # SonarQube Scan Step
       # - name: SonarQube Scan
