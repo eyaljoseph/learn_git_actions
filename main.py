@@ -8,22 +8,23 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-POD_NUMBER = os.getenv("POD_NUMBER", "UNKNOWN")
+def get_pod_number():
+    return os.getenv("POD_NUMBER", "UNKNOWN")
 
 @app.route('/pod1')
 def pod1():
     logger.info('Received request to /')
-    return f'Hello, World! from pod {POD_NUMBER}'
+    return f'Hello, World! from pod {get_pod_number()}'
 
 @app.route('/pod2')
 def pod2():
     logger.info('Received request to /')
-    return f'Hello, World! from pod {POD_NUMBER}'
+    return f'Hello, World! from pod {get_pod_number()}'
 
 @app.route('/pod3')
 def pod3():
     logger.info('Received request to /')
-    return f'Hello, World! from pod {POD_NUMBER}'
+    return f'Hello, World! from pod {get_pod_number()}'
 
 @app.route('/health')
 def health_check():
