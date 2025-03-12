@@ -35,10 +35,19 @@ def test_health_check(client):
         'version': '1.0.0'
     }
 
-def test_pod_number_environment_variable():
+@pytest.fixture
+def env_setup():
+    """Fixture to set up and tear down environment variables"""
+    old_pod_number = os.environ.get('POD_NUMBER')
+    os.environ['POD_NUMBER'] = 'TEST-POD-1'
+    yield
+    if old_pod_number:
+        os.environ['POD_NUMBER'] = old_pod_number
+    else:
+        del os.environ['POD_NUMBER']
+
+def test_pod_number_environment_variable(env_setup, client):
     """Test POD_NUMBER environment variable handling"""
-    test_pod_number = "TEST-POD-1"
-    os.environ["POD_NUMBER"] = test_pod_number
-    with app.test_client() as client:
-        response = client.get('/pod1')
-        assert test_pod_number in response.get_data(as_text=True) 
+    response = client.get('/pod1')
+    assert 'TEST-POD-1' in response.get_data(as_text=True) 
+    
