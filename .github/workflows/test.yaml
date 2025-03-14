@@ -33,34 +33,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=eyaljoseph_learn_git_actions
+            -Dsonar.projectKey=eyaljoseph_learn_git
             -Dsonar.organization=learn-to-use-sonarqube
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.python.coverage.reportPaths=coverage.xml
             -Dsonar.sources=.
             -Dsonar.python.version=3.10
-
-      # # SonarQube Scan Step
-      # - name: SonarQube Scan
-      #   uses: SonarSource/sonarcloud-github-action@v2
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}  # Your SonarCloud token
-      #     SONAR_HOST_URL: https://sonarcloud.io  # If using SonarCloud
-      #   with:
-      #     args: >
-      #       -Dsonar.projectKey=${{ secrets.SONARQUBE_PROJECT_KEY }}
-      #       -Dsonar.projectName=${{ secrets.SONARQUBE_PROJECT_NAME }}
-      #       -Dsonar.organization=${{ secrets.SONARQUBE_ORGANIZATION }}
-      #       -Dsonar.branch.name=main
-
-      # Veracode Scan Step
-      # - name: Veracode Static Analysis Scan
-      #   uses: veracode/scan-action@v2  # Veracode GitHub Action
-      #   with:
-      #     api-id: ${{ secrets.VERACODE_API_ID }}  # Veracode API ID (secret)
-      #     api-key: ${{ secrets.VERACODE_API_KEY }}  # Veracode API Key (secret)
-      #     file: "requirements.txt"  # Specify the file or folder to scan, adjust as needed
-      #     scan-type: "static"  # Scan type (static, dynamic, etc.)
 
       - name: Run Flask Server
         run: |
