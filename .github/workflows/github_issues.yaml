@@ -43,23 +43,23 @@ jobs:
                 return `${minutes}m ${seconds}s`;
               };
 
-            // Format date
-            const formatDate = (date) => {
-              return new Date(date).toLocaleString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-              });
-            };
+              // Format date
+              const formatDate = (date) => {
+                return new Date(date).toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                });
+              };
             
-            // Filter failed jobs
-            const failedJobs = jobs.data.jobs.filter(job => job.conclusion === 'failure');
-            const failedJobsDetails = failedJobs.map(job => 
-              `${workflow_name}
+              // Filter failed jobs
+              const failedJobs = jobs.data.jobs.filter(job => job.conclusion === 'failure');
+              const failedJobsDetails = failedJobs.map(job => 
+                `${workflow_name}
 Job: ${job.name}
 Duration: ${calculateDuration(job.started_at, job.completed_at)}
 Date: ${formatDate(job.started_at)}
