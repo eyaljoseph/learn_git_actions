@@ -1,0 +1,69 @@
+name: Create Issue on Test Failure
+
+on:
+  workflow_run:
+    workflows: ["*"]
+    types:
+      - completed
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    
+    steps:
+      - name: Get Failed Jobs Info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const workflow_name = context.payload.workflow_run.name;
+            const run_id = context.payload.workflow_run.id;
+            
+            // Fetch the jobs for this workflow run
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run_id
+            });
+            
+            // Function to calculate duration in minutes and seconds
+            const calculateDuration = (start, end) => {
+              const startTime = new Date(start);
+              const endTime = new Date(end);
+              const durationMs = endTime - startTime;
+              const minutes = Math.floor(durationMs / 60000);
+              const seconds = Math.floor((durationMs % 60000) / 1000);
+              return `${minutes}m ${seconds}s`;
+            };
+
+            // Format date
+            const formatDate = (date) => {
+              return new Date(date).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              });
+            };
+            
+            // Filter failed jobs
+            const failedJobs = jobs.data.jobs.filter(job => job.conclusion === 'failure');
+            const failedJobsDetails = failedJobs.map(job => 
+              `${workflow_name}
+Job: ${job.name}
+Duration: ${calculateDuration(job.started_at, job.completed_at)}
+Date: ${formatDate(job.started_at)}
+${job.html_url}`
+            ).join('\n\n');
+            
+            // Create the issue
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Fail`,
+              body: failedJobsDetails
+            }); 
+            
