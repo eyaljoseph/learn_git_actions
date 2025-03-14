@@ -26,14 +26,12 @@ jobs:
               console.log('Workflow Name:', workflow_name);
               console.log('Run ID:', run_id);
               
-              // Fetch the jobs for this workflow run
               const jobs = await github.rest.actions.listJobsForWorkflowRun({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 run_id: run_id
               });
               
-              // Function to calculate duration in minutes and seconds
               const calculateDuration = (start, end) => {
                 const startTime = new Date(start);
                 const endTime = new Date(end);
@@ -43,7 +41,6 @@ jobs:
                 return `${minutes}m ${seconds}s`;
               };
 
-              // Format date
               const formatDate = (date) => {
                 return new Date(date).toLocaleString('en-US', {
                   year: 'numeric',
@@ -56,25 +53,25 @@ jobs:
                 });
               };
             
-              // Filter failed jobs
               const failedJobs = jobs.data.jobs.filter(job => job.conclusion === 'failure');
-              const failedJobsDetails = failedJobs.map(job => 
-                `${workflow_name}
-Job: ${job.name}
-Duration: ${calculateDuration(job.started_at, job.completed_at)}
-Date: ${formatDate(job.started_at)}
-${job.html_url}`
-              ).join('\n\n');
+              const failedJobsDetails = failedJobs.map(job => {
+                return [
+                  `Workflow: ${workflow_name}`,
+                  `Job: ${job.name}`,
+                  `Duration: ${calculateDuration(job.started_at, job.completed_at)}`,
+                  `Date: ${formatDate(job.started_at)}`,
+                  job.html_url
+                ].join('\n');
+              }).join('\n\n');
               
-              // Create the issue with more descriptive title
-              const issue = await github.rest.issues.create({
+              await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: `Workflow Failure: ${workflow_name}`,
                 body: failedJobsDetails || 'No detailed failure information available'
               }); 
               
-              console.log('Issue created:', issue.data.html_url);
+              console.log('Issue created successfully');
             } catch (error) {
               console.error('Error:', error);
               core.setFailed(error.message);
