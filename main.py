@@ -11,6 +11,11 @@ app = Flask(__name__)
 def get_pod_number():
     return os.getenv("POD_NUMBER", "UNKNOWN")
 
+@app.route('/')
+def index():
+    logger.info('Received request to /')
+    return 'Welcome to the Flask application! Try /pod1, /pod2, or /pod3 endpoints.'
+
 @app.route('/pod1')
 def pod1():
     logger.info('Received request to /')

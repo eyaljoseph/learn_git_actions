@@ -51,4 +51,9 @@ jobs:
           ps aux | grep python
 
       - name: Test Flask Server
-        run: curl http://127.0.0.1:8080  # Access Flask on port 8080
+        run: |
+          curl http://127.0.0.1:8080  # Access Flask on port 8080
+          curl http://127.0.0.1:8080/pod1
+          curl http://127.0.0.1:8080/pod2
+          curl http://127.0.0.1:8080/pod3
+          curl http://127.0.0.1:8080/health
