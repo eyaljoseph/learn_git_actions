@@ -2,51 +2,14 @@ name: Docker Build and Push
 
 on:
   workflow_run:
-    workflows: 
-      - "Run Flask Server on GitHub Runner"
-      - "Python Linting"
+    workflows: ["Run Flask Server on GitHub Runner"]  # The name of your test workflow file
     types:
       - completed  # Triggers when the test workflow finishes
 
 jobs:
-  check-workflows:
-    runs-on: ubuntu-latest
-    outputs:
-      all_success: ${{ steps.check.outputs.all_success }}
-    steps:
-      - name: Check workflow results
-        id: check
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const requiredWorkflows = [
-              "Run Flask Server on GitHub Runner",
-              "Python Linting"
-            ];
-            
-            let allSuccess = true;
-            
-            for (const workflow of requiredWorkflows) {
-              console.log(`Checking workflow: ${workflow}`);
-              if (context.payload.workflow_run.name === workflow) {
-                if (context.payload.workflow_run.conclusion !== 'success') {
-                  allSuccess = false;
-                  console.log(`${workflow} failed or didn't complete successfully`);
-                  break;
-                }
-              }
-            }
-            
-            core.setOutput('all_success', allSuccess.toString());
-
   docker-build-push:
-    needs: check-workflows
-    if: needs.check-workflows.outputs.all_success == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Runs only if the test workflow succeeded
 
     steps:
       - name: Checkout repository
