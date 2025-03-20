@@ -10,11 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      contents: read
     
     steps:
       - name: Delete closed issues
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -26,15 +28,17 @@ jobs:
             console.log(`Found ${issues.data.length} closed issues`);
             
             for (const issue of issues.data) {
-              try {
-                await github.rest.issues.delete({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number
-                });
-                console.log(`Deleted issue #${issue.number}`);
-              } catch (error) {
-                console.error(`Failed to delete issue #${issue.number}:`, error);
+              if (issue.state === 'closed') {
+                try {
+                  await github.rest.issues.delete({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number
+                  });
+                  console.log(`Deleted issue #${issue.number}`);
+                } catch (error) {
+                  console.error(`Failed to delete issue #${issue.number}:`, error.message);
+                }
               }
             }
             

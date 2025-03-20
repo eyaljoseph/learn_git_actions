@@ -2,7 +2,9 @@ name: Docker Build and Push
 
 on:
   workflow_run:
-    workflows: ["Run Flask Server on GitHub Runner"]  # The name of your test workflow file
+    workflows: 
+      - "Run Flask Server on GitHub Runner"
+      - "Python Linting"
     types:
       - completed  # Triggers when the test workflow finishes
 
