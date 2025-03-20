@@ -1,64 +1,45 @@
-name: Cleanup Closed Issues
+name: Delete Closed Issues
 
 on:
   schedule:
-    - cron: '*/2 * * * *'  # Runs every 2 minutes
-  workflow_dispatch:  # Allows manual triggering
+    # Runs every 2 minutes
+    - cron: '*/2 * * * *'
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
-  cleanup:
+  delete-closed-issues:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      contents: read
-    
     steps:
       - name: Delete closed issues
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          debug: true  # Enable debug mode
           script: |
-            console.log('Starting issue cleanup...');
-            console.log('Repository:', context.repo.owner + '/' + context.repo.repo);
+            const { owner, repo } = context.repo;
             
-            try {
-              const issues = await github.rest.issues.listForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'closed',
-                per_page: 100
-              });
-              
-              console.log(`Found ${issues.data.length} closed issues`);
-              
-              if (issues.data.length === 0) {
-                console.log('No closed issues to delete');
-                return;
+            // Get all closed issues
+            const closedIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'closed',
+              per_page: 100
+            });
+            
+            console.log(`Found ${closedIssues.length} closed issues to delete`);
+            
+            // Delete each closed issue
+            for (const issue of closedIssues) {
+              try {
+                await github.rest.issues.delete({
+                  owner,
+                  repo,
+                  issue_number: issue.number
+                });
+                console.log(`Deleted issue #${issue.number}: ${issue.title}`);
+              } catch (error) {
+                console.error(`Failed to delete issue #${issue.number}: ${error.message}`);
               }
-              
-              for (const issue of issues.data) {
-                console.log(`Processing issue #${issue.number} (${issue.state})`);
-                if (issue.state === 'closed') {
-                  try {
-                    await github.rest.issues.delete({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      issue_number: issue.number
-                    });
-                    console.log(`Successfully deleted issue #${issue.number}`);
-                  } catch (deleteError) {
-                    console.error('Delete error details:', {
-                      issue: issue.number,
-                      error: deleteError.message,
-                      status: deleteError.status,
-                      response: deleteError.response
-                    });
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('Main error:', error);
-              core.setFailed(`Workflow failed: ${error.message}`);
             }
             
