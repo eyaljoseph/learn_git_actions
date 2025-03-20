@@ -1,0 +1,40 @@
+name: Cleanup Closed Issues
+
+on:
+  schedule:
+    - cron: '*/2 * * * *'  # Runs every 2 minutes
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    
+    steps:
+      - name: Delete closed issues
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              per_page: 100
+            });
+            
+            console.log(`Found ${issues.data.length} closed issues`);
+            
+            for (const issue of issues.data) {
+              try {
+                await github.rest.issues.delete({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number
+                });
+                console.log(`Deleted issue #${issue.number}`);
+              } catch (error) {
+                console.error(`Failed to delete issue #${issue.number}:`, error);
+              }
+            }
+            
