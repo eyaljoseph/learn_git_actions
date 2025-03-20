@@ -17,28 +17,48 @@ jobs:
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          debug: true  # Enable debug mode
           script: |
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              per_page: 100
-            });
+            console.log('Starting issue cleanup...');
+            console.log('Repository:', context.repo.owner + '/' + context.repo.repo);
             
-            console.log(`Found ${issues.data.length} closed issues`);
-            
-            for (const issue of issues.data) {
-              if (issue.state === 'closed') {
-                try {
-                  await github.rest.issues.delete({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: issue.number
-                  });
-                  console.log(`Deleted issue #${issue.number}`);
-                } catch (error) {
-                  console.error(`Failed to delete issue #${issue.number}:`, error.message);
+            try {
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                per_page: 100
+              });
+              
+              console.log(`Found ${issues.data.length} closed issues`);
+              
+              if (issues.data.length === 0) {
+                console.log('No closed issues to delete');
+                return;
+              }
+              
+              for (const issue of issues.data) {
+                console.log(`Processing issue #${issue.number} (${issue.state})`);
+                if (issue.state === 'closed') {
+                  try {
+                    await github.rest.issues.delete({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issue.number
+                    });
+                    console.log(`Successfully deleted issue #${issue.number}`);
+                  } catch (deleteError) {
+                    console.error('Delete error details:', {
+                      issue: issue.number,
+                      error: deleteError.message,
+                      status: deleteError.status,
+                      response: deleteError.response
+                    });
+                  }
                 }
               }
+            } catch (error) {
+              console.error('Main error:', error);
+              core.setFailed(`Workflow failed: ${error.message}`);
             }
             
