@@ -1,19 +1,26 @@
-version: 2
-updates:
-  # Check for updates to GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+name: Manual Dependency Check
 
-  # Check for updates to Python dependencies
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    ignore:
-      # Example: Ignore updates for a specific package
-      - dependency-name: "example-package"
-        versions: ["1.x"]
+on:
+  workflow_dispatch: # Allows manual triggering
 
-  # Add other ecosystems as needed (e.g., npm, Maven, etc.)
+jobs:
+  check-dependencies:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+
+      - name: Check for dependency updates
+        run: |
+          pip list --outdated
