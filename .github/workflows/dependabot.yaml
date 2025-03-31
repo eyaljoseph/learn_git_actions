@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Check for updates to GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Check for updates to Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # Example: Ignore updates for a specific package
+      - dependency-name: "example-package"
+        versions: ["1.x"]
+
+  # Add other ecosystems as needed (e.g., npm, Maven, etc.)
