@@ -36,3 +36,14 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+
+      - name: Run Trivy scan
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+          trivy image --format json --output trivy-results.json ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+
+      - name: Upload Trivy scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-scan-results
+          path: trivy-results.json
