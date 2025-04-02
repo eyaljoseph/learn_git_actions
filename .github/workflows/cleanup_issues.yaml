@@ -8,8 +8,6 @@ on:
 jobs:
   delete-closed-issues:
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
     
     steps:
       - name: Delete closed issues
@@ -19,7 +17,7 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             
-            // Get closed issues
+            // Get closed issues using REST API (for listing)
             const closedIssues = await github.paginate(github.rest.issues.listForRepo, {
               owner,
               repo,
@@ -27,8 +25,7 @@ jobs:
               per_page: 100
             });
             
-            // Optional: Filter issues by age or other criteria
-            // For example, only delete issues closed more than 30 days ago
+            // Filter issues by age (optional)
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             
@@ -37,14 +34,39 @@ jobs:
               return closedAt < thirtyDaysAgo;
             });
             
-            // Delete filtered issues
+            console.log(`Found ${issuesToDelete.length} closed issues to delete`);
+            
+            // Delete issues using GraphQL API
+            let deletedCount = 0;
             for (const issue of issuesToDelete) {
-              console.log(`Deleting issue #${issue.number}: ${issue.title}`);
-              await github.rest.issues.delete({
-                owner,
-                repo,
-                issue_number: issue.number
-              });
+              try {
+                // First, get the global ID of the issue (required for GraphQL)
+                const response = await github.graphql(`
+                  query {
+                    repository(owner: "${owner}", name: "${repo}") {
+                      issue(number: ${issue.number}) {
+                        id
+                      }
+                    }
+                  }
+                `);
+                
+                const issueId = response.repository.issue.id;
+                
+                // Now delete the issue
+                await github.graphql(`
+                  mutation {
+                    deleteIssue(input: {issueId: "${issueId}"}) {
+                      clientMutationId
+                    }
+                  }
+                `);
+                
+                console.log(`Deleted issue #${issue.number}: ${issue.title}`);
+                deletedCount++;
+              } catch (error) {
+                console.error(`Failed to delete issue #${issue.number}: ${error.message}`);
+              }
             }
             
-            console.log(`Deleted ${issuesToDelete.length} closed issues`);
+            console.log(`Successfully deleted ${deletedCount} out of ${issuesToDelete.length} closed issues`);
