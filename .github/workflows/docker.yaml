@@ -43,7 +43,7 @@ jobs:
           trivy image --format json --output trivy-results.json ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
 
       - name: Upload Trivy scan results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: trivy-scan-results
           path: trivy-results.json
