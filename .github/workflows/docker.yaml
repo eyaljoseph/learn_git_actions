@@ -42,7 +42,7 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
           echo "Adding Trivy to PATH"
           echo 'export PATH=$PATH:$HOME/.local/bin' >> $GITHUB_ENV
-          source $GITHUB_ENV
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           trivy --version
 
       - name: Run Trivy scan
