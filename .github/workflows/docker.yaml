@@ -36,11 +36,13 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-          
+
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-  
+          echo "Adding Trivy to PATH"
+          echo 'export PATH=$PATH:$HOME/.local/bin' >> $GITHUB_ENV
+
       - name: Run Trivy scan
         run: |
           docker pull ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
