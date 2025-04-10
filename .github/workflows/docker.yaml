@@ -32,26 +32,19 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
 
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-          echo "Adding Trivy to PATH"
-          echo 'export PATH=$PATH:$HOME/.local/bin' >> $GITHUB_ENV
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          trivy --version
-
-      - name: Run Trivy scan
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-          trivy image --format json --output trivy-results.json ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-
-      - name: Upload Trivy scan results
-        uses: actions/upload-artifact@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          name: trivy-scan-results
-          path: trivy-results.json
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+          
