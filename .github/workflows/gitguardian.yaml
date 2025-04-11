@@ -20,9 +20,9 @@ jobs:
             -e GITHUB_TOKEN="${{ github.token }}" \
             -e GITGUARDIAN_API_KEY="${{ secrets.GITGUARDIAN_API_KEY }}" \
             -v "${{ github.workspace }}:/gg_workspace" \
+            --workdir /gg_workspace \
             gitguardian/ggshield:v1.38.0 \
             secret scan repo --all --exit-code 1
-        working-directory: /gg_workspace
 
       # Optional: Add a step to echo the GitGuardian findings
       - name: Echo GitGuardian findings (if any)
