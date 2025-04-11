@@ -1,24 +1,26 @@
-name: GitGuardian Secret Detection
+name: GitGuardian Secret Scan
 
 on:
   push:
-    branches:
-      - main
+    branches: [main] # Or your default branch
   pull_request:
-    branches:
-      - main
 
 jobs:
-  secret-scan:
+  gitguardian-scan:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required for scanning full history
 
-      - name: Run GitGuardian Secret Detection
+      - name: Run GitGuardian secret scan
         uses: GitGuardian/ggshield-action@v1
         with:
-          args: scan repo --show-secrets
-        env:
-          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+          github_token: ${{ github.token }}
+          args: "scan repo --all --exit-code 1" # Scan all history and fail on secrets
+
+      # Optional: Add a step to echo the GitGuardian findings
+      - name: Echo GitGuardian findings (if any)
+        if: failure()
+        run: echo "GitGuardian found secrets! Check the workflow output for details."
