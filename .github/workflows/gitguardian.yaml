@@ -15,12 +15,14 @@ jobs:
           fetch-depth: 0 # Required for scanning full history
 
       - name: Run GitGuardian secret scan
-        uses: GitGuardian/ggshield-action@v1
-        with:
-          args: "scan repo --all --exit-code 1"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }} # Provide the API key
+        run: |
+          docker run --rm \
+            -e GITHUB_TOKEN="${{ github.token }}" \
+            -e GITGUARDIAN_API_KEY="${{ secrets.GITGUARDIAN_API_KEY }}" \
+            -v "${{ github.workspace }}:/gg_workspace" \
+            gitguardian/ggshield:v1.38.0 \
+            secret scan repo --all --exit-code 1
+        working-directory: /gg_workspace
 
       # Optional: Add a step to echo the GitGuardian findings
       - name: Echo GitGuardian findings (if any)
