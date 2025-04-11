@@ -17,6 +17,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy the entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
@@ -26,9 +32,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Set the entrypoint to a script that will run ggshield and then your app
-COPY entrypoint.sh /app/entrypoint.sh
+# Set the command to run your app (adjust this based on your app's entry point)
 ENTRYPOINT ["/app/entrypoint.sh"]
-
-# The default command will be to just run the Flask app if no specific ggshield command is given
 CMD ["python", "main.py"]
