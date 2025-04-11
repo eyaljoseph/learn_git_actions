@@ -22,7 +22,8 @@ jobs:
             -v "${{ github.workspace }}:/gg_workspace" \
             --workdir /gg_workspace \
             gitguardian/ggshield:v1.38.0 \
-            secret scan repo --all --exit-code 1
+            scan repo --all --exit-code 1 # Let's try this again, but simpler
+        shell: bash # Explicitly use bash
 
       # Optional: Add a step to echo the GitGuardian findings
       - name: Echo GitGuardian findings (if any)
