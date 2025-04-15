@@ -2,9 +2,9 @@
 FROM python:3.10-slim
 
 # Install GitGuardian CLI and ensure its bin directory is in PATH
-RUN apt-get update && apt-get install -y --no-install-recommends git
-RUN pip install --no-cache-dir gitguardian
-ENV PATH="/root/.local/bin:$PATH" # Or /home/appuser/.local/bin if running as appuser later
+# RUN apt-get update && apt-get install -y --no-install-recommends git
+# RUN pip install --no-cache-dir gitguardian
+# ENV PATH="/root/.local/bin:$PATH" # Or /home/appuser/.local/bin if running as appuser later
 
 # Create non-root user
 RUN useradd -m appuser
