@@ -1,12 +1,15 @@
-name: Cleanup Old Artifacts
+name: Cleanup Old Actions
 
 on:
   schedule:
     - cron: "0 0 */2 * *" # Runs every 2 days at midnight UTC
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write  # Required to delete artifacts
 
     steps:
       - name: List and delete old artifacts
@@ -32,4 +35,3 @@ jobs:
                 console.log(`Deleted artifact: ${artifact.name}`);
               }
             }
-              
