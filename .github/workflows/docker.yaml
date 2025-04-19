@@ -38,7 +38,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         run: |
-          docker run --rm aquasec/trivy:latest image --ignore-unfixed --severity HIGH,CRITICAL ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest > trivy-results.txt || true
+          docker run --rm aquasec/trivy:latest image --ignore-unfixed --severity HIGH,CRITICAL ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest > full-trivy-results.txt || true
           # Extract only the relevant part of the results
           awk '/Legend:/,/└───────────┴/' full-trivy-results.txt > trivy-results.txt
         continue-on-error: true  # Allow workflow to continue even if vulnerabilities are found
