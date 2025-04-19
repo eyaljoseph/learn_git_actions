@@ -35,15 +35,12 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
-          docker run --rm aquasec/trivy:latest image --ignore-unfixed --severity HIGH,CRITICAL ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest > test.txt || true
 
-      # - name: Run Trivy vulnerability scanner
-      #   uses: aquasecurity/trivy-action@master
-      #   with:
-      #     image-ref: '${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest'
-      #     ignore-unfixed: true
-      #     severity: 'HIGH,CRITICAL'
-      #   continue-on-error: true  # Allow workflow to continue even if vulnerabilities are found
+      - name: Run Trivy vulnerability scanner
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+          trivy image --format table --output trivy-results.txt ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+        continue-on-error: true  # Allow workflow to continue even if vulnerabilities are found
 
       - name: Push Docker image
         run: |
@@ -59,23 +56,7 @@ jobs:
             Author: ${{ github.event.head_commit.author.name }}
             Message: ${{ github.event.head_commit.message }}
             Vulnerabilities:
-            ```$(cat test.txt)```
+            ```$(cat trivy-results.txt)```
           footer: "<{run_url}|View Run>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      # - name: Send Slack notification
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      #   run: |
-      #     curl -X POST -H 'Content-type: application/json' --data '{
-      #       "text": "Hello @${{ github.actor }}, the Docker build and Trivy scan have completed.",
-      #       "attachments": [
-      #         {
-      #           "color": "#36a64f",
-      #           "title": "Workflow Details",
-      #           "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-      #           "text": "Repository: ${{ github.repository }}\nCommit: ${{ github.sha }}\nTriggered by: ${{ github.actor }}"
-      #         }
-      #       ]
-      #     }' $SLACK_WEBHOOK_URL
