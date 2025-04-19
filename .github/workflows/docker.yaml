@@ -38,17 +38,12 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-          trivy image --format table --output trivy-results.txt ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+          docker run --rm aquasec/trivy:latest image --ignore-unfixed --severity HIGH,CRITICAL ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest > trivy-results.txt || true
         continue-on-error: true  # Allow workflow to continue even if vulnerabilities are found
 
       - name: Push Docker image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-
-      - name: Debug Slack Webhook
-        run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"Test message from GitHub Actions"}' ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Notify Slack
         uses: ravsamhq/notify-slack-action@be814b201e233b2dc673608aa46e5447c8ab13f2 # 2.5.0
