@@ -46,6 +46,10 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
 
+      - name: Debug Slack Webhook
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Test message from GitHub Actions"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Notify Slack
         uses: ravsamhq/notify-slack-action@be814b201e233b2dc673608aa46e5447c8ab13f2 # 2.5.0
         if: always()
