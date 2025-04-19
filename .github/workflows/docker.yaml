@@ -41,6 +41,11 @@ jobs:
           docker run --rm aquasec/trivy:latest image --ignore-unfixed --severity HIGH,CRITICAL ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest > trivy-results.txt || true
         continue-on-error: true  # Allow workflow to continue even if vulnerabilities are found
 
+      - name: Debug Trivy Results
+        run: |
+          echo "Contents of trivy-results.txt:"
+          cat trivy-results.txt
+
       - name: Push Docker image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
