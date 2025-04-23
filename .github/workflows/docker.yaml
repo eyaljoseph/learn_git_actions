@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  security-events: write  # Required for uploading SARIF files to the Security tab 
+  security-events: write  # Required for uploading SARIF files to the Security tab
 
 jobs:
   docker-build-push:
