@@ -6,6 +6,10 @@ on:
     types:
       - completed
 
+permissions:
+  contents: read
+  security-events: write  # Required for uploading SARIF files to the Security tab
+
 jobs:
   docker-build-push:
     runs-on: ubuntu-latest
