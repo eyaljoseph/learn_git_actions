@@ -63,6 +63,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Download Trivy Results Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: trivy-results
+
       - name: Upload Trivy results to Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
