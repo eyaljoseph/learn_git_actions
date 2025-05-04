@@ -61,6 +61,8 @@ jobs:
       
       - name: test gh
         if : always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs --field sarif=@trivy-results.sarif --field ref=${GIT_CURRENT_BRANCH}
 
