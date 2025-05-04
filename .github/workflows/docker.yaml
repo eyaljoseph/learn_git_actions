@@ -46,8 +46,6 @@ jobs:
 
       - name: Install Trivy
         uses: aquasecurity/trivy-action@master
-        with:
-          only-update: true
 
       - name: Run Trivy vulnerability scanner
         run: |
