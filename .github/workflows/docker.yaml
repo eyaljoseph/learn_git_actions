@@ -40,9 +40,14 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
 
+      # - name: Install Trivy
+      #   run: |
+      #     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        uses: aquasecurity/trivy-action@master
+        with:
+          only-update: true
 
       - name: Run Trivy vulnerability scanner
         run: |
