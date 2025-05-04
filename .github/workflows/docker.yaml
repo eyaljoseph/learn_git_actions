@@ -58,21 +58,26 @@ jobs:
       - name: Push Docker image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+      
+      - name: test gh
+        if : always()
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs --field sarif=@trivy-results.sarif --field ref=${GIT_CURRENT_BRANCH}
 
-  upload-trivy-results:
-    needs: docker-build-push
-    runs-on: ubuntu-latest
+  # upload-trivy-results:
+    # needs: docker-build-push
+    # runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    # steps:
+    #   - name: Checkout repository
+    #     uses: actions/checkout@v2
 
-      - name: Download Trivy Results Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: trivy-results
+    #   - name: Download Trivy Results Artifact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: trivy-results
 
-      - name: Upload Trivy results to Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-result.sarif
+    #   - name: Upload Trivy results to Security tab
+    #     uses: github/codeql-action/upload-sarif@v3
+    #     with:
+    #       sarif_file: trivy-result.sarif
