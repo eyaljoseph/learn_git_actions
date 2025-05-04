@@ -2,7 +2,8 @@ name: Create Issue on Test Failure
 
 on:
   workflow_run:
-    workflows: ["*"]
+    workflows: ["Python Linting"]
+    # workflows: ["*"]
     types:
       - completed
 
