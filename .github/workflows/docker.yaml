@@ -58,6 +58,10 @@ jobs:
       - name: Push Docker image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
+
+      - name: Compress and Encode SARIF File
+        run: |
+          gzip -c trivy-results.sarif | base64 > trivy-results.sarif.gz.b64  
       
       - name: test gh
         if : always()
