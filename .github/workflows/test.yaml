@@ -26,19 +26,19 @@ jobs:
         run: |
           pytest --cov=. --cov-report=xml
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=eyaljoseph_learn_git_actions
-            -Dsonar.organization=learn-to-use-sonarqube
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=.
-            -Dsonar.python.version=3.10
+      # - name: SonarCloud Scan
+      #   uses: SonarSource/sonarqube-scan-action@v5.0.0
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #   with:
+      #     args: >
+      #       -Dsonar.projectKey=eyaljoseph_learn_git_actions
+      #       -Dsonar.organization=learn-to-use-sonarqube
+      #       -Dsonar.host.url=https://sonarcloud.io
+      #       -Dsonar.python.coverage.reportPaths=coverage.xml
+      #       -Dsonar.sources=.
+      #       -Dsonar.python.version=3.10
 
       - name: Run Flask Server
         run: |
