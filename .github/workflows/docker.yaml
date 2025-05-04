@@ -66,6 +66,8 @@ jobs:
         run: |
           gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs \
           --field sarif=@trivy-results.sarif \
+          --field commit_sha=${{ github.event.workflow_run.head_commit.id }} \
+          --field ref=${{ github.ref }}
 
   # upload-trivy-results:
     # needs: docker-build-push
