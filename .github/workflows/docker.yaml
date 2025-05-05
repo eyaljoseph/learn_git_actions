@@ -59,19 +59,21 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
 
-      - name: Compress and Encode SARIF File
+      - name: Compress and encode SARIF file
         run: |
-          gzip -c trivy-results.sarif | base64 > trivy-results.sarif.gz.b64  
+          gzip -c trivy-results.sarif > trivy-results.sarif.gz
+          base64 trivy-results.sarif.gz > trivy-results.sarif.gz.b64
       
-      - name: test gh
-        if : always()
+      - name: Upload SARIF file to GitHub Code Scanning
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          SARIF_CONTENT=$(cat trivy-results.sarif.gz.b64)
           gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs \
-          --field sarif=@trivy-results.sarif \
-          --field commit_sha=${{ github.event.workflow_run.head_commit.id }} \
-          --field ref=${{ github.ref }}
+            --field sarif="$SARIF_CONTENT" \
+            --field commit_sha=${{ github.event.workflow_run.head_commit.id }} \
+            --field ref=${{ github.ref }}
 
   # upload-trivy-results:
     # needs: docker-build-push
