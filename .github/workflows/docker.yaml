@@ -59,38 +59,39 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
 
-      - name: Compress and encode SARIF file
-        run: |
-          gzip -c trivy-results.sarif > trivy-results.sarif.gz
-          base64 trivy-results.sarif.gz > trivy-results.sarif.gz.b64
+      # - name: Compress and encode SARIF file
+      #   run: |
+      #     gzip -c trivy-results.sarif > trivy-results.sarif.gz
+      #     base64 trivy-results.sarif.gz > trivy-results.sarif.gz.b64
       
-      - name: Upload SARIF file to GitHub Code Scanning
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SARIF_CONTENT=$(cat trivy-results.sarif.gz.b64)
-          gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs \
-            --field sarif="$SARIF_CONTENT" \
-            --field commit_sha=${{ github.event.workflow_run.head_commit.id }} \
-            --field ref=${{ github.ref }}
-
       # - name: Upload SARIF file to GitHub Code Scanning
       #   if: always()
       #   env:
       #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       #   run: |
-      #     SARIF_CONTENT=$(base64 -w 0 trivy-results.sarif)
-      #     curl -X POST \
-      #       -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-      #       -H "Accept: application/vnd.github+json" \
-      #       -H "Content-Type: application/json" \
-      #       "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs" \
-      #       -d '{
-      #         "commit_sha": "${{ github.sha }}",
-      #         "ref": "${{ github.ref }}",
-      #         "sarif": "'"${SARIF_CONTENT}"'"
-      #       }'
+      #     SARIF_CONTENT=$(cat trivy-results.sarif.gz.b64)
+      #     gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs \
+      #       --field sarif="$SARIF_CONTENT" \
+      #       --field commit_sha=${{ github.event.workflow_run.head_commit.id }} \
+      #       --field ref=${{ github.ref }}
+
+      - name: Upload SARIF file to GitHub Code Scanning
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gzip -c trivy-results.sarif > trivy-results.sarif.gz
+          SARIF_CONTENT=$(base64 -w 0 trivy-results.sarif.gz)
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs" \
+            -d '{
+              "commit_sha": "${{ github.event.workflow_run.head_commit.id }}",
+              "ref": "${{ github.ref }}",
+              "sarif": "'"${SARIF_CONTENT}"'"
+            }'
 
   # upload-trivy-results:
     # needs: docker-build-push
