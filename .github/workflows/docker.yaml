@@ -1,4 +1,4 @@
-name: Docker Build and Push
+name: Docker Build and Push with Matrix
 
 on:
   workflow_run:
@@ -15,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
+    strategy:
+      matrix:
+        # Define a matrix variable 'image_suffix' with three values.
+        # This will create three parallel jobs, one for each value.
+        image_suffix: ["one", "two", "three"]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -26,6 +32,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/docker
+          # Use matrix variable in the cache key for better isolation if needed,
+          # or keep it general if layers are shared. Keeping it general here.
           key: ${{ runner.os }}-docker-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-docker-
@@ -37,51 +45,40 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
+        # Use the matrix.image_suffix variable in the image tag
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:${{ matrix.image_suffix }} .
 
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Run Trivy vulnerability scanner
+        # Scan the image using the matrix variable in the tag
         run: |
-          trivy image --ignore-unfixed --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-        continue-on-error: true
+          trivy image --ignore-unfixed --severity HIGH,CRITICAL --format sarif --output trivy-results-${{ matrix.image_suffix }}.sarif ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:${{ matrix.image_suffix }}
+        continue-on-error: true # Continue even if Trivy finds vulnerabilities
 
       - name: Save Trivy Results as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-results
-          path: trivy-results.sarif
+          # Use matrix variable in artifact name to distinguish results
+          name: trivy-results-${{ matrix.image_suffix }}
+          path: trivy-results-${{ matrix.image_suffix }}.sarif
 
       - name: Push Docker image
+        # Push the image using the matrix variable in the tag
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:latest
-
-      # - name: Compress and encode SARIF file
-      #   run: |
-      #     gzip -c trivy-results.sarif > trivy-results.sarif.gz
-      #     base64 trivy-results.sarif.gz > trivy-results.sarif.gz.b64
-      
-      # - name: Upload SARIF file to GitHub Code Scanning
-      #   if: always()
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     SARIF_CONTENT=$(cat trivy-results.sarif.gz.b64)
-      #     gh api --method POST /repos/${{ github.repository }}/code-scanning/sarifs \
-      #       --field sarif="$SARIF_CONTENT" \
-      #       --field commit_sha=${{ github.event.workflow_run.head_commit.id }} \
-      #       --field ref=${{ github.ref }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/learn_git_actions:${{ matrix.image_suffix }}
 
       - name: Upload SARIF file to GitHub Code Scanning
+        # This step will run for each matrix job, uploading the specific SARIF file
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gzip -c trivy-results.sarif > trivy-results.sarif.gz
-          SARIF_CONTENT=$(base64 -w 0 trivy-results.sarif.gz)
+          gzip -c trivy-results-${{ matrix.image_suffix }}.sarif > trivy-results-${{ matrix.image_suffix }}.sarif.gz
+          SARIF_CONTENT=$(base64 -w 0 trivy-results-${{ matrix.image_suffix }}.sarif.gz)
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
@@ -93,20 +90,3 @@ jobs:
               "sarif": "'"${SARIF_CONTENT}"'"
             }'
 
-  # upload-trivy-results:
-    # needs: docker-build-push
-    # runs-on: ubuntu-latest
-
-    # steps:
-    #   - name: Checkout repository
-    #     uses: actions/checkout@v2
-
-    #   - name: Download Trivy Results Artifact
-    #     uses: actions/download-artifact@v4
-    #     with:
-    #       name: trivy-results
-
-    #   - name: Upload Trivy results to Security tab
-    #     uses: github/codeql-action/upload-sarif@v3
-    #     with:
-    #       sarif_file: trivy-result.sarif
