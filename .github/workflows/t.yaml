@@ -1,0 +1,474 @@
+name: Build & Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      RELEASE_TAG:
+        required: true
+        description: "Used for PROD deployments on prod branch only. Ignored in dev and staging. Be careful what you set here, existing S3 deployments will be overridden!"
+        default: "vX.Y.Z-snapshot"
+      turbo_enabled:
+        description: "Enable Maven Turbo Plugin. Defaults to false on prod branch."
+        default: false
+        required: true
+        type: boolean
+      force_package:
+        description: "Force rebuild all Typescript packages without using remote cache"
+        default: false
+        required: true
+        type: boolean
+  push:
+    branches:
+      - "dev"
+      - "staging"
+    paths:
+      - ".github/workflows/build.yaml"
+      - "node/**"
+      - "frontend/**"
+      - "java/**"
+      - "writerside/**"
+      - "contracts/**"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".config/**"
+      - ".npmrc"
+      - ".nvmrc"
+
+# make sure only 1 deployment runs for the same branch at a given time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  build:
+    name: Core Build (Java & Node Artifacts)
+    runs-on:
+      - self-hosted
+      - development.xtype.io
+      - build.runner
+
+    timeout-minutes: 50 # Adjust as needed for the core build steps
+
+    env:
+      FRONTEND_APPS: "xtype-installer,xtype-app,xtype-cloneview,xtype-appview"
+      JAVA_SERVICES: "snow-inbound-gateway,snow-resync-processor,snow-sync,customer-signup,events-legacy-adapter,notifications,management,customer-instance-validation,workflow-execution,snow-agent-mock"
+      CDN_BASE_URL: cdn.xtype.io
+      S3_DIST_DIR_PREFIX: s3://cdn.xtype.io
+      BUILD_DIST_DIR_PREFIX: ./frontend
+      BUILD_DIST_DIR_POSTFIX: dist/pkg
+      # UPLOAD_PATH will be overwritten by Set Environment Variables step
+      ECR_REPOSITORY: 480346663992.dkr.ecr.us-east-1.amazonaws.com
+      CLOUDFRONT_DISTRIBUTION_ID: E1P1QQ7ZSVTAT
+      WRITERSIDE_INSTANCE: writerside/docu
+      WRITERSIDE_ARTIFACT: webHelpDOCU2-all.zip
+      WRITERSIDE_OUTPUT: artifacts/xtype-docu
+
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+    # Define outputs to be consumed by dependent jobs
+    outputs:
+      docker_tag: ${{ steps.set_env_vars.outputs.DOCKER_TAG }}
+      git_current_branch: ${{ steps.set_env_vars.outputs.GIT_CURRENT_BRANCH }}
+      upload_path: ${{ steps.set_env_vars.outputs.UPLOAD_PATH }}
+      ecr_repository: ${{ env.ECR_REPOSITORY }}
+      # Convert comma-separated strings to JSON arrays for matrix strategy
+      java_services_array: ${{ toJson(split(env.JAVA_SERVICES, ',')) }}
+      frontend_apps_array: ${{ toJson(split(env.FRONTEND_APPS, ',')) }}
+      cdn_base_url: ${{ env.CDN_BASE_URL }}
+      s3_dist_dir_prefix: ${{ env.S3_DIST_DIR_PREFIX }}
+      build_dist_dir_prefix: ${{ env.BUILD_DIST_DIR_PREFIX }}
+      build_dist_dir_postfix: ${{ env.BUILD_DIST_DIR_POSTFIX }}
+      cloudfront_distribution_id: ${{ env.CLOUDFRONT_DISTRIBUTION_ID }}
+      writerside_instance: ${{ env.WRITERSIDE_INSTANCE }}
+      writerside_artifact: ${{ env.WRITERSIDE_ARTIFACT }}
+      writerside_output: ${{ env.WRITERSIDE_OUTPUT }}
+      vite_release_tag: ${{ steps.set_env_vars.outputs.VITE_RELEASE_TAG }}
+      vite_base_url: ${{ steps.set_env_vars.outputs.VITE_BASE_URL }}
+      vite_app_base_url: ${{ steps.set_env_vars.outputs.VITE_APP_BASE_URL }}
+      vite_cloneview_base_url: ${{ steps.set_env_vars.outputs.VITE_CLONEVIEW_BASE_URL }}
+      vite_appview_base_url: ${{ steps.set_env_vars.outputs.VITE_APPVIEW_BASE_URL }}
+      vite_installer_base_url: ${{ steps.set_env_vars.outputs.VITE_INSTALLER_BASE_URL }}
+
+    services:
+      mongodb:
+        image: mongo:6@sha256:a1b8cde881cbff434f6c81f57f02108509987cf758a5665f7d1ef484e28bee47
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set Environment Variables
+        id: set_env_vars # Add an ID to reference outputs from this step
+        run: |
+          TARGET_BRANCH=$(echo ${GITHUB_REF#refs/heads/})
+          echo "GIT_CURRENT_BRANCH=${TARGET_BRANCH}" >> $GITHUB_ENV
+          echo "GIT_CURRENT_BRANCH=${TARGET_BRANCH}" >> $GITHUB_OUTPUT # Output for other jobs
+
+          if [[ "${TARGET_BRANCH}" == 'dev' ]]; then
+            VITE_RELEASE_TAG='Dev'
+            DOCKER_TAG='dev-latest'
+            UPLOAD_PATH='/branches/dev'
+          elif [[ "${TARGET_BRANCH}" == 'staging' ]]; then
+            VITE_RELEASE_TAG='Staging'
+            DOCKER_TAG='staging-latest'
+            UPLOAD_PATH="/branches/staging"
+          elif [[ "${TARGET_BRANCH}" == 'prod' ]]; then
+            VITE_RELEASE_TAG=${{ inputs.RELEASE_TAG }}
+            DOCKER_TAG='prod-latest'
+            UPLOAD_PATH="/releases/${{ inputs.RELEASE_TAG }}"
+          else
+            DOCKER_TAG='poc-test'
+            UPLOAD_PATH='/branches/test'
+          fi
+
+          echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_ENV
+          echo "UPLOAD_PATH=${UPLOAD_PATH}" >> $GITHUB_ENV
+          echo "VITE_RELEASE_TAG=${VITE_RELEASE_TAG}" >> $GITHUB_ENV # Ensure VITE_RELEASE_TAG is set for this job's internal use too
+
+          echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_OUTPUT
+          echo "UPLOAD_PATH=${UPLOAD_PATH}" >> $GITHUB_OUTPUT
+          echo "VITE_RELEASE_TAG=${VITE_RELEASE_TAG}" >> $GITHUB_OUTPUT
+
+          # set env vars for Vite
+          VITE_BASE_URL="https://${{ env.CDN_BASE_URL }}${UPLOAD_PATH}"
+          echo "VITE_BASE_URL=${VITE_BASE_URL}" >> $GITHUB_ENV
+          echo "VITE_BASE_URL=${VITE_BASE_URL}" >> $GITHUB_OUTPUT
+
+          echo "VITE_APP_BASE_URL=${VITE_BASE_URL}/xtype-app" >> $GITHUB_ENV
+          echo "VITE_CLONEVIEW_BASE_URL=${VITE_BASE_URL}/xtype-cloneview" >> $GITHUB_ENV
+          echo "VITE_APPVIEW_BASE_URL=${VITE_BASE_URL}/xtype-appview" >> $GITHUB_ENV
+          echo "VITE_INSTALLER_BASE_URL=${VITE_BASE_URL}/xtype-installer" >> $GITHUB_ENV
+
+          echo "VITE_APP_BASE_URL=${VITE_BASE_URL}/xtype-app" >> $GITHUB_OUTPUT
+          echo "VITE_CLONEVIEW_BASE_URL=${VITE_BASE_URL}/xtype-cloneview" >> $GITHUB_OUTPUT
+          echo "VITE_APPVIEW_BASE_URL=${VITE_BASE_URL}/xtype-appview" >> $GITHUB_OUTPUT
+          echo "VITE_INSTALLER_BASE_URL=${VITE_BASE_URL}/xtype-installer" >> $GITHUB_OUTPUT
+
+      - name: Print Environment Variables
+        run: env
+
+      - name: Install AWS CLI
+        uses: unfor19/install-aws-cli-action@3c53dab4dd62b5d9d647f0ce9519285250a3c767 # v1.0.6
+
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
+        with:
+          distribution: "temurin"
+          java-version: |
+            11.0.15
+            21
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@07fbbe97d97ef44336b7382563d66743297e442f # v4.5
+        with:
+          maven-version: 3.9.2
+
+      - name: Maven Repo Cache
+        uses: actions/cache@v4
+        with:
+          path: "~/.m2/repository"
+          key: maven-repo-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            maven-repo-${{ github.ref_name }}-
+            maven-repo-
+
+      - name: Setup shared build tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+          coreutils \
+          util-linux \
+          protobuf-compiler
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.14.0
+
+      - name: Enable Corepack to use pnpm
+        run: corepack enable
+
+      - name: Setup Node.js caching
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+          cache-dependency-path: "./pnpm-lock.yaml"
+
+      - name: Install Node dependencies
+        run: pnpm install --recursive
+
+      - name: Writerside cache
+        if: false # Currently disabled, keep for now.
+        id: writerside-cache
+        uses: actions/cache@v4
+        with:
+          key: writerside-${{ github.ref_name }}-${{ hashFiles('writerside/**') }}
+          path: ${{ env.WRITERSIDE_OUTPUT }}
+
+      - name: Build docs using Writerside Docker builder
+        if: false # Currently disabled, keep for now.
+        # if: steps.writerside-cache.outputs.cache-hit != 'true'
+        uses: JetBrains/writerside-github-action@b96c8e6011351f5637326ac4d7ff5a2661de368e # v4
+        with:
+          instance: ${{ env.WRITERSIDE_INSTANCE }}
+          artifact: ${{ env.WRITERSIDE_ARTIFACT }}
+          docker-version: 233.14389
+
+      - name: Unzip Writerside docu artifact
+        if: false # Currently disabled, keep for now.
+        #if: steps.writerside-cache.outputs.cache-hit != 'true'
+        run: unzip -O UTF-8 -qq artifacts/${{ env.WRITERSIDE_ARTIFACT }} -d ${{ env.WRITERSIDE_OUTPUT }}
+
+      - name: Pull mongo image manually (debugging issue with failing java testcontainers)
+        run: |
+          echo "Pulling mongo:6 manually"
+          docker pull mongo:6@sha256:a1b8cde881cbff434f6c81f57f02108509987cf758a5665f7d1ef484e28bee47
+
+      - name: Java preconditions
+        run: |
+          cd ./java
+          # always install libs, starters, apis etc. to avoid outdated/incompatible artifacts in the local Maven repo
+          mvn install -T1C --also-make -pl api/rest-api-native,api/rest-api,api/avro-api,api/protobuf-api,library/xtype-persistence-model,library/xtype-domain-common,starter/xtype-spring-boot-starter-kafka,starter/xtype-spring-boot-starter-web
+          # always execute compile step on all services to check codegen integrity (OpenAPI, Avro, etc.)
+          mvn compile -T1C
+
+      - name: Build Java Services (Maven & Local Docker Image Creation)
+        run: |
+          echo "Building - Java Services..."
+          turbo_enabled=false
+          if [[ "${{ steps.set_env_vars.outputs.GIT_CURRENT_BRANCH }}" == 'dev' ]]; then
+            echo "on dev branch"
+            turbo_enabled=true
+            if [[ ${{ github.event_name == 'workflow_dispatch' }} == true ]]; then
+              echo "manually triggered"
+              turbo_enabled=${{ inputs.turbo_enabled }}
+            fi
+          fi
+          echo "turbo_enabled = $turbo_enabled"
+          cd ./java
+          # This command builds the docker images locally but does NOT push them.
+          mvn install -T1C -Dspring-boot.build-image.skip=false -Ddocker.skip=false -Ddocker.verbose=true -Dturbo.enabled=$turbo_enabled
+
+      - name: Package Node services & React applications
+        run: |
+          if [[ "${{ inputs.force_package }}" == "true" ]]; then
+            pnpm package:force
+          else
+            pnpm package
+          fi
+
+  build_java_docker_images:
+    name: Build & Push Java Docker Images
+    needs: build # Depends on the 'build' job to complete and provide outputs (like local docker images)
+    runs-on:
+      - self-hosted
+      - development.xtype.io
+      - build.runner
+    timeout-minutes: 30 # Adjust as needed for parallel pushes
+    strategy:
+      fail-fast: false # Allow other matrix jobs to complete even if one service fails
+      matrix:
+        service: ${{ fromJson(needs.build.outputs.java_services_array) }} # Iterate over each Java service in parallel
+
+    env:
+      ECR_REPOSITORY: ${{ needs.build.outputs.ecr_repository }}
+      DOCKER_TAG: ${{ needs.build.outputs.docker_tag }}
+      GIT_CURRENT_BRANCH: ${{ needs.build.outputs.git_current_branch }}
+
+    steps:
+      - name: Checkout code (for scripting/context)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Configure AWS credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1 # ECR region
+          role-chaining: true
+          role-skip-session-tagging: true
+          role-to-assume: dev-cluster-build-runner-ecr-push
+
+      - name: Login to ECR
+        run: |
+          echo "Logging into ECR..."
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ env.ECR_REPOSITORY }}
+
+      - name: Tag and push Docker image for ${{ matrix.service }}
+        run: |
+          SERVICE="${{ matrix.service }}"
+          DOCKER_TAG="${{ env.DOCKER_TAG }}"
+          ECR_REPOSITORY="${{ env.ECR_REPOSITORY }}"
+          GIT_CURRENT_BRANCH="${{ env.GIT_CURRENT_BRANCH }}"
+
+          echo "Processing service: $SERVICE"
+
+          # Check if the Docker image was built locally (e.g., not skipped by Maven Turbo)
+          if docker image inspect $SERVICE:latest >/dev/null 2>&1; then
+            echo "Tagging/pushing Docker image for service ${SERVICE} with tag ${DOCKER_TAG}"
+            docker tag $SERVICE:latest ${ECR_REPOSITORY}/$SERVICE:${DOCKER_TAG}
+            docker push ${ECR_REPOSITORY}/$SERVICE:${DOCKER_TAG}
+            echo "Notifying keel..."
+            curl --request POST --data '{
+              "name": '\""${ECR_REPOSITORY}/${SERVICE}"\"',
+              "Tag": '\""${DOCKER_TAG}"\"'
+            }' http://keel.keel.svc.cluster.local:9300/v1/webhooks/native || true
+          else
+            echo "Docker image $SERVICE:latest does not exist locally."
+            if [[ "${GIT_CURRENT_BRANCH}" == 'dev' ]]; then
+              echo "Ignoring: This is likely due to a turbo-maven-plugin cache hit on 'dev' branch, no Docker image built."
+            else
+              echo "Error: Not on 'dev' branch, and Docker image was not found. Failing the build."
+              exit 1
+            fi
+          fi
+
+  build_node_docker_images:
+    name: Build & Push Node Docker Images
+    needs: build # Depends on the 'build' job where Node dependencies are installed and packages are created
+    runs-on:
+      - self-hosted
+      - development.xtype.io
+      - build.runner
+    timeout-minutes: 30 # Adjust as needed
+
+    env:
+      ECR_REPOSITORY: ${{ needs.build.outputs.ecr_repository }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      
+      # Node.js environment and dependencies needed for `pnpm dockerBuildPush` in this new job context
+      - name: Setup Node.js environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.14.0
+
+      - name: Enable Corepack to use pnpm
+        run: corepack enable
+
+      - name: Setup Node.js caching
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+          cache-dependency-path: "./pnpm-lock.yaml"
+
+      - name: Install Node dependencies
+        run: pnpm install --recursive
+
+      - name: Configure AWS credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1 # ECR region
+          role-chaining: true
+          role-skip-session-tagging: true
+          role-to-assume: dev-cluster-build-runner-ecr-push
+
+      - name: Login to ECR
+        run: |
+          echo "Logging into ECR..."
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ env.ECR_REPOSITORY }}
+
+      - name: Build & push Node Docker images
+        run: |
+          echo "Building & pushing Node Docker images..."
+          pnpm dockerBuildPush
+
+  deploy_frontend_s3:
+    name: Deploy Frontend & Writerside to S3
+    needs: build # Depends on the 'build' job for packaged frontend artifacts
+    runs-on:
+      - self-hosted
+      - development.xtype.io
+      - build.runner
+    timeout-minutes: 30 # Adjust as needed
+
+    env:
+      S3_DIST_DIR_PREFIX: ${{ needs.build.outputs.s3_dist_dir_prefix }}
+      BUILD_DIST_DIR_PREFIX: ${{ needs.build.outputs.build_dist_dir_prefix }}
+      BUILD_DIST_DIR_POSTFIX: ${{ needs.build.outputs.build_dist_dir_postfix }}
+      UPLOAD_PATH: ${{ needs.build.outputs.upload_path }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ needs.build.outputs.cloudfront_distribution_id }}
+      WRITERSIDE_OUTPUT: ${{ needs.build.outputs.writerside_output }}
+      WRITERSIDE_ARTIFACT: ${{ needs.build.outputs.writerside_artifact }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Install AWS CLI
+        uses: unfor19/install-aws-cli-action@3c53dab4dd62b5d9d647f0ce9519285250a3c767 # v1.0.6
+
+      - name: Configure AWS credentials for S3 Upload
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-west-2 # S3 bucket region
+          role-chaining: true
+          role-skip-session-tagging: true
+          role-to-assume: arn:aws:iam::480346663992:role/dev-cluster-build-runner-cdn-put
+          unset-current-credentials: true # reset previous AWS credentials
+
+      - name: Deploy Writerside docu
+        if: false # Re-enable if needed
+        run: |
+          APP_NAME="xtype-docu"
+          BUILD_DIST_DIR="${{ env.WRITERSIDE_OUTPUT }}"
+          S3_DIST_DIR="${{ env.S3_DIST_DIR_PREFIX }}${{ env.UPLOAD_PATH }}/${APP_NAME}"
+
+          echo "Synchronizing ${BUILD_DIST_DIR} with S3 bucket ${S3_DIST_DIR}"
+          aws s3 sync ${BUILD_DIST_DIR} ${S3_DIST_DIR} --delete
+
+          echo "Invalidating cloudfront cache under ${{ env.UPLOAD_PATH }}/${APP_NAME}*"
+          aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "${{ env.UPLOAD_PATH }}/${APP_NAME}*"
+
+          echo "Done"
+
+      - name: Deploy React applications to S3
+        run: |
+          # Convert the JSON array output from 'build' job back to a space-separated string for bash loop
+          FRONTEND_APPS_STRING="${{ join(needs.build.outputs.frontend_apps_array, ',') }}"
+          echo "Frontend apps string: $FRONTEND_APPS_STRING"
+          for APP_NAME in $(echo $FRONTEND_APPS_STRING | sed "s/,/ /g"); do
+
+            if [[ "$APP_NAME" == "xtype-app" || "$APP_NAME" == "xtype-cloneview" || "$APP_NAME" == "xtype-appview" ]]; then
+              BUILD_DIST_DIR="${{ env.BUILD_DIST_DIR_PREFIX }}/xtype-app/${{ env.BUILD_DIST_DIR_POSTFIX }}/${APP_NAME}"
+            else
+              BUILD_DIST_DIR="${{ env.BUILD_DIST_DIR_PREFIX }}/${APP_NAME}/${{ env.BUILD_DIST_DIR_POSTFIX }}"
+            fi
+
+            S3_DIST_DIR="${{ env.S3_DIST_DIR_PREFIX }}${{ env.UPLOAD_PATH }}/${APP_NAME}"
+
+            echo "Synchronizing ${BUILD_DIST_DIR} with S3 bucket ${S3_DIST_DIR}"
+            aws s3 sync ${BUILD_DIST_DIR} ${S3_DIST_DIR} --delete
+            
+            echo "Invalidating cloudfront cache under ${{ env.UPLOAD_PATH }}/${APP_NAME}*"
+            aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "${{ env.UPLOAD_PATH }}/${APP_NAME}*"
+
+            echo "Done"
+          done
+
+  notify_slack:
+    name: Notify Slack
+    # This job runs after all primary build/deploy jobs have completed.
+    needs: [build, build_java_docker_images, build_node_docker_images, deploy_frontend_s3]
+    if: always() # Ensure it runs even if preceding jobs fail
+    runs-on: ubuntu-latest # Or a specific runner if preferred
+
+    steps:
+      - name: Notify Slack
+        uses: ravsamhq/notify-slack-action@be814b201e233b2dc673608aa46e5447c8ab13f2 # 2.5.0
+        with:
+          status: ${{ job.status }}
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}@{branch}> on <{commit_url}|{commit_sha}> Author: ${{ github.event.head_commit.author.name }} Message: ${{ github.event.head_commit.message }}"
+          footer: "<{run_url}|View Run>"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
